@@ -1,3 +1,4 @@
+SUBSUBDIRS += services/alarm-push
 SUBSUBDIRS += services/clock
 SUBSUBDIRS += services/cron
 SUBSUBDIRS += services/dyndns
