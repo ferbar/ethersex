@@ -44,10 +44,6 @@
 
 #include "services/ntp/ntp.h"
 
-#ifdef DNS_SUPPORT
-#  include "protocols/dns/resolv.h"
-#endif
-
 #ifdef DEBUG_DHCP
 #  define DHCP_DEBUG(a...)  debug_printf("dhcp: " a)
 #else
