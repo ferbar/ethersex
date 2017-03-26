@@ -1,8 +1,0 @@
-dep_bool_menu "Alarm Push Service" ALARM_PUSH_SUPPORT $HTTPLOG_SUPPORT
-	dep_bool "Method init auto start" ALARM_PUSH_INIT_AUTOSTART_SUPPORT $ALARM_PUSH_SUPPORT
-	dep_bool "Method periodic auto start" ALARM_PUSH_PERIODIC_AUTOSTART_SUPPORT $ALARM_PUSH_SUPPORT
-    int "ADCs to check" ALARM_PUSH_ADCS 1	
-    int "first ADCs to check" ALARM_PUSH_FIRST_ADC 4	
-	comment  "Debugging Flags"
-	dep_bool 'Alarm Push Debug' DEBUG_ALARM_PUSH $DEBUG $ALARM_PUSH_SUPPORT
-endmenu

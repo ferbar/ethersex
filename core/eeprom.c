@@ -183,10 +183,6 @@ eeprom_init (void)
 #ifdef HTTPLOG_UUID_EEPROM
   eeprom_save_P (httplog_uuid, PSTR (CONF_HTTPLOG_UUID), sizeof(CONF_HTTPLOG_UUID)+1);
 #endif
-#ifdef ALARM_PUSH_SUPPORT
-  uint8_t adcs=ALARM_PUSH_ADCS;
-  eeprom_save (alarm_push_adcs, &adcs, sizeof(uint8_t));
-#endif
 
   eeprom_update_chksum ();
 }

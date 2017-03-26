@@ -148,10 +148,6 @@ struct eeprom_config_t
   char httplog_uuid[sizeof(CONF_HTTPLOG_UUID)+1];
 #endif
 
-#ifdef ALARM_PUSH_SUPPORT
-  uint8_t alarm_push_adcs;
-#endif
-
   uint8_t crc;
 };
 
