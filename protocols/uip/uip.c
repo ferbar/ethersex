@@ -709,11 +709,7 @@ uip_process(u8_t flag)
        uip_connr->tcpstateflags == UIP_FIN_WAIT_2) {
       ++(uip_connr->timer);
       if(uip_connr->timer == UIP_TIME_WAIT_TIMEOUT) {
-        /* 20170317 add: notify APP in case of timeout - uip_timedout() */
-        UIP_LOG("tcp timer: timeout connection (UIP_TIME_WAIT | UIP_FIN_WAIT_2)");
-        uip_connr->tcpstateflags = UIP_CLOSED;
-        uip_flags = UIP_TIMEDOUT;
-        UIP_APPCALL();
+	uip_connr->tcpstateflags = UIP_CLOSED;
       }
     } else if(uip_connr->tcpstateflags != UIP_CLOSED) {
       /* Decrease the connection inactive timer */
