@@ -34,7 +34,7 @@
 
 #include "core/eeprom.h"
 
-uint16_t *alarm_push_lastAdc=NULL;
+int16_t *alarm_push_lastAdc=NULL;
 
 /*
   If enabled in menuconfig, this function is called during boot up of ethersex
@@ -48,7 +48,7 @@ alarm_push_init(void)
   if(alarm_push_lastAdc) {
     free(alarm_push_lastAdc);
   }
-  alarm_push_lastAdc = (uint16_t*) malloc(sizeof(int16_t)*alarm_push_adcs);
+  alarm_push_lastAdc = (int16_t*) malloc(sizeof(int16_t)*alarm_push_adcs);
 
   return ECMD_FINAL_OK;
 }
@@ -78,7 +78,7 @@ alarm_push_periodic(void)
   eeprom_restore(alarm_push_adcs, &alarm_push_adcs, sizeof(alarm_push_adcs));
 
   for(int i=0; i < alarm_push_adcs; i++) {
-    uint16_t adcVal = adc_get(ALARM_PUSH_FIRST_ADC+i); // ADC4 ist mit adc1 beschriftet, eigentlich uint16_t 0...1023 aber dann geht das < 0-5 ned gescheit
+    int16_t adcVal = adc_get(ALARM_PUSH_FIRST_ADC+i); // ADC4 ist mit adc1 beschriftet, eigentlich uint16_t 0...1023 aber dann geht das < 0-5 ned gescheit
     if(adcVal > (alarm_push_lastAdc[i]+5) || adcVal < (alarm_push_lastAdc[i]-5)) {
       periodicCounter=0;
       char *buffer=alarm_push_querystring(alarm_push_adcs);

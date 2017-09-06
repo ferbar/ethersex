@@ -22,7 +22,7 @@
 #ifndef HAVE_ALARM_PUSH_H
 #define HAVE_ALARM_PUSH_H
 
-extern uint16_t *alarm_push_lastAdc;
+extern int16_t *alarm_push_lastAdc;
 
 int16_t
 alarm_push_onrequest(char *cmd, char *output, uint16_t len);
