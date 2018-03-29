@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "config.h"
 #include "alarm-push.h"
@@ -75,25 +76,18 @@ alarm_push_periodic(void)
 {
   static int periodicCounter=0;
   uint8_t alarm_push_adcs=0;
+  bool force_send=false;
   eeprom_restore(alarm_push_adcs, &alarm_push_adcs, sizeof(alarm_push_adcs));
 
   for(int i=0; i < alarm_push_adcs; i++) {
     int16_t adcVal = adc_get(ALARM_PUSH_FIRST_ADC+i); // ADC4 ist mit adc1 beschriftet, eigentlich uint16_t 0...1023 aber dann geht das < 0-5 ned gescheit
+    alarm_push_lastAdc[i]=adcVal;
     if(adcVal > (alarm_push_lastAdc[i]+5) || adcVal < (alarm_push_lastAdc[i]-5)) {
-      periodicCounter=0;
-      char *buffer=alarm_push_querystring(alarm_push_adcs);
-      MYDEBUGF("changed ADC%d: %d, last=%d buffer=%s\n", ALARM_PUSH_FIRST_ADC+i, adcVal, alarm_push_lastAdc[i], buffer);
-
-      httplog_P(PSTR("%s"),buffer);
-      free(buffer);
-      alarm_push_lastAdc[i]=adcVal;
-      return ECMD_FINAL_OK;
-    }
-    if(periodicCounter > (30*10)) { // 10 = 1 sekunde - wir senden unten dann das komplette update => ins lastAdc schreiben
-      alarm_push_lastAdc[i]=adcVal;
+	  force_send=true;
+      MYDEBUGF("changed ADC%d: %d, last=%d\n", ALARM_PUSH_FIRST_ADC+i, adcVal, alarm_push_lastAdc[i]);
     }
   }
-  if(periodicCounter > (30*10)) { // 10 = 1 sekunde
+  if(periodicCounter > (30*10) || force_send) { // 10 = 1 sekunde
     char *buffer=alarm_push_querystring(alarm_push_adcs);
     MYDEBUGF ("periodic 1min %s\n", buffer);
     httplog_P(PSTR("%s"),buffer);
