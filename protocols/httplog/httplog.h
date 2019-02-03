@@ -30,5 +30,15 @@ uint8_t httplog(const char*, ...);
 uint8_t httplog_P(const char*, ...);
 
 extern uip_conn_t *httpConn;
+extern char *httplog_tmp_buf;
+extern char httplog_state;
+extern char httplog_state2;
+#define HTTPLOG_STATE_RESOLVE 1
+#define HTTPLOG_STATE_DNS_QUERY 2
+#define HTTPLOG_STATE_DNS_QUERY_DONE 3
+#define HTTPLOG_STATE_CONNECT_ERROR 4
+#define HTTPLOG_STATE_CONNECTED 5
+#define HTTPLOG_STATE_ACK 6
+#define HTTPLOG_STATE_DISCONNECTED 7
 
 #endif  /* HAVE_HTTPLOG_H */

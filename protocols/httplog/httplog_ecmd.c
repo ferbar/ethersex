@@ -50,15 +50,35 @@ int16_t parse_cmd_ht (char *cmd, char *output, uint16_t len)
 
 int16_t parse_cmd_ht_status (char *cmd, char *output, uint16_t len) 
 {
-  debug_printf("parse_cmd_ht_status\n");
-  if (httpConn) {
-    char ip_buffer[16];
-    print_ipaddr(&httpConn->ripaddr, ip_buffer, sizeof(ip_buffer));
-    debug_printf("parse_cmd_ht_status remote ip:%s len=%d\n",ip_buffer,len);
-    // default buffer len:49bytes
-    return ECMD_FINAL(snprintf_P(output, len, PSTR("flags:%d timer:%d %u -> %s:%u"),
-      httpConn->tcpstateflags, httpConn->timer, ntohs(httpConn->lport), ip_buffer, ntohs(httpConn->rport)));
+  debug_printf("parse_cmd_ht_status [%s]\n", cmd);
+  // http://www.ethersex.de/index.php/Development/ECMD
+  if (httpConn && cmd[0] != 23) {
+    cmd[0] = 23;
+	#define IP_LEN 16
+    // char *ip_buffer=(char*) malloc(IP_LEN);
+    char ip_buffer[IP_LEN];
+	// if(ip_buffer) {
+      print_ipaddr(&httpConn->ripaddr, ip_buffer, IP_LEN);
+	  debug_printf("parse_cmd_ht_status da\n");
+      debug_printf("parse_cmd_ht_status remote ip:%s len=%d\n",ip_buffer,len);
+      // default buffer len:40bytes
+	  int l=snprintf_P(output, len, PSTR("con s:%d:%d, f:%d t:%d %u -> %s:%u"),
+          httplog_state,httplog_state2, httpConn->tcpstateflags, httpConn->timer, ntohs(httpConn->lport), ip_buffer, ntohs(httpConn->rport));
+      debug_printf("parse_cmd_ht_status return len:%d [%s]\n", l, output);
+      // free(ip_buffer);
+      return ECMD_AGAIN(l);
+	/*
+    } else {
+      debug_printf("parse_cmd_ht_status ERROR ALLOC\n");
+    }
+	*/
+//    return ECMD_AGAIN(snprintf_P(output, len, PSTR("con f:%d t:%d %u -> %s:%u"),
+//      httpConn->tcpstateflags, httpConn->timer, ntohs(httpConn->lport), ip_buffer, ntohs(httpConn->rport)));
   }
+  debug_printf("parse_cmd_ht_status AGAIN\n");
+#warning fixme: Das braucht global ram:
+  return ECMD_FINAL(snprintf_P(output, len, PSTR("buffer: %p=[%s]"),
+      httplog_tmp_buf, httplog_tmp_buf ? httplog_tmp_buf : ""));
   debug_printf("parse_cmd_ht_status buffer full\n");
   return ECMD_FINAL(snprintf_P(output, len, PSTR("no connection")));
 }
@@ -69,24 +89,22 @@ int16_t parse_cmd_ht_uuid(char *cmd, char *output, uint16_t len)
     debug_printf("parse_cmd_ht_uuid() called with string %s\n", cmd);
 
     while (*cmd == ' ')
-	cmd++;
+        cmd++;
 
     if (*cmd != '\0') {
-	if(strlen(cmd) < sizeof(CONF_HTTPLOG_UUID)) {
-	    eeprom_save(httplog_uuid, cmd, sizeof(CONF_HTTPLOG_UUID));
-	    eeprom_update_chksum();
-	    return ECMD_FINAL_OK;
-	} else {
-	    return ECMD_FINAL(snprintf_P(output, len, PSTR("new uuid too long (%s)"), cmd));
-	}
-    }
-    else
-    {
-	char uuid[sizeof(CONF_HTTPLOG_UUID)+1];
+        if(strlen(cmd) < sizeof(CONF_HTTPLOG_UUID)) {
+            eeprom_save(httplog_uuid, cmd, sizeof(CONF_HTTPLOG_UUID));
+            eeprom_update_chksum();
+            return ECMD_FINAL_OK;
+        } else {
+            return ECMD_FINAL(snprintf_P(output, len, PSTR("new uuid too long (%s)"), cmd));
+        }
+    } else {
+        char uuid[sizeof(CONF_HTTPLOG_UUID)+1];
 
-	eeprom_restore(httplog_uuid, uuid, sizeof(uuid));
+        eeprom_restore(httplog_uuid, uuid, sizeof(uuid));
 
-	return ECMD_FINAL(snprintf_P(output, len, PSTR("uuid:%s"), uuid));
+        return ECMD_FINAL(snprintf_P(output, len, PSTR("uuid:%s"), uuid));
     }
 }
 #endif

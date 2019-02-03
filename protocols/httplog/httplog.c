@@ -53,9 +53,12 @@
 #define HTTPLOG_DEBUG(a...)
 #endif
 
-static char *httplog_tmp_buf=NULL;
+char *httplog_tmp_buf=NULL;
 // httplog_tmp_buf is being cleared after ACK, connection close, connection abort. However if a new connection is created between ACK and abort it is cleared again and nothing is sent.
 uip_conn_t *httpConn=NULL;
+
+char httplog_state=0;
+char httplog_state2=0;
 
 // first string is the GET part including the path
 static const char PROGMEM get_string_head[] = "GET " CONF_HTTPLOG_PATH "?";
@@ -67,10 +70,14 @@ static const char PROGMEM get_string_foot[] =
 static void
 httplog_net_main(void)
 {
-  HTTPLOG_DEBUG("httplog_net_main[%u->%u] start\n",ntohs(uip_conn->lport), ntohs(uip_conn->rport));
+  httplog_state2=httplog_state;
+  httplog_state=20;
+  HTTPLOG_DEBUG("httplog_net_main[%u->%u] start uip_flags=%d\n",ntohs(uip_conn->lport), ntohs(uip_conn->rport), uip_flags);
+
   // we expect that aborted | timeout | closed is only triggered ONCE (otherwise httplog_tmp_buf of another message might be freed)
   if (uip_aborted() || uip_timedout() || uip_closed())
   {
+    httplog_state=HTTPLOG_STATE_DISCONNECTED;
     HTTPLOG_DEBUG("httplog_net_main[%u] connection aborted=%d, timedout=%d, closed=%d\n",ntohs(uip_conn->lport), uip_aborted(), uip_timedout(), uip_closed());
 	// according to uip doc cleanup should be called in close(), however this is not called in case of timeout.
     if (httplog_tmp_buf)
@@ -94,6 +101,7 @@ httplog_net_main(void)
 
   if (uip_connected() || uip_rexmit())
   {
+    httplog_state=HTTPLOG_STATE_CONNECTED;
 #define BUFFER_AVAIL UIP_APPDATA_SIZE - (p-(char*)uip_appdata)
     HTTPLOG_DEBUG("httplog_net_main[%u] new connection or rexmit, sending message %p=[%s], UIP_APPDATA_SIZE=%d\n",ntohs(uip_conn->lport),httplog_tmp_buf,httplog_tmp_buf,UIP_APPDATA_SIZE);
     char *p = uip_appdata;
@@ -122,6 +130,7 @@ httplog_net_main(void)
 
   if (uip_acked())
   {
+    httplog_state=HTTPLOG_STATE_ACK;
     HTTPLOG_DEBUG("httplog_net_main[%u] acked\n",ntohs(uip_conn->lport));
     uip_close();
   end:
@@ -140,11 +149,13 @@ httplog_net_main(void)
 static void
 httplog_dns_query_cb(char *name, uip_ipaddr_t * ipaddr)
 {
-  HTTPLOG_DEBUG("got dns response, connecting\n");
+  httplog_state=HTTPLOG_STATE_DNS_QUERY_DONE;
+  HTTPLOG_DEBUG("httplog_dns_query_cb have IP, connecting\n");
   httpConn = uip_connect(ipaddr, HTONS(80), httplog_net_main);
   if (!httpConn)
   // if (!uip_connect(ipaddr, HTONS(80), httplog_net_main))
   {
+    httplog_state=HTTPLOG_STATE_CONNECT_ERROR;
     HTTPLOG_DEBUG("error\n");
     if (httplog_tmp_buf)
     {
@@ -177,6 +188,7 @@ httplog_buffer_empty(int len)
 static void
 httplog_resolve_address(void)
 {
+  httplog_state=HTTPLOG_STATE_RESOLVE;
   HTTPLOG_DEBUG("httplog_resolve_address\n");
   uip_ipaddr_t *ipaddr;
 
@@ -184,12 +196,15 @@ httplog_resolve_address(void)
   memcpy_P(conf_httplog_service, PSTR(CONF_HTTPLOG_SERVICE), sizeof(CONF_HTTPLOG_SERVICE));
   if (!(ipaddr = resolv_lookup(conf_httplog_service)))
   {
-    HTTPLOG_DEBUG("httplog_resolve_address resolv_query\n");
+    httplog_state=HTTPLOG_STATE_DNS_QUERY;
+    // have to query DNS 
+    HTTPLOG_DEBUG("httplog_resolve_address do resolv_query\n");
     resolv_query(conf_httplog_service, httplog_dns_query_cb);
-    HTTPLOG_DEBUG("httplog_resolve_address resolv_query done\n");
+    HTTPLOG_DEBUG("httplog_resolve_address do resolv_query done\n");
   }
   else
   {
+    // IP stored in cache
     httplog_dns_query_cb(NULL, ipaddr);
   }
   HTTPLOG_DEBUG("httplog_resolve_address done\n");
