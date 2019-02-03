@@ -252,12 +252,13 @@ struct uip_stats uip_stat;
 #  include "protocols/uip/parse.h"
 #  include "core/debug.h"
 #  define DEBUG_PRINTF(a...) debug_printf(LOG_PREFIX a)
+#  define DEBUG_PRINT_BUFFER(text) debug_print_buffer(PSTR(text))
 #else
 #  define DEBUG_PRINTF(a...)
+#  define DEBUG_PRINT_BUFFER(text) 
 #endif
 
 void debug_print_buffer(const char *prefix);
-#define DEBUG_PRINT_BUFFER(text) debug_print_buffer(PSTR(text))
 
 #define UIP_LOG(m) DEBUG_PRINTF(m "\n")
 
@@ -714,12 +715,18 @@ uip_process(u8_t flag)
     if(uip_connr->tcpstateflags == UIP_TIME_WAIT ||
        uip_connr->tcpstateflags == UIP_FIN_WAIT_2) {
       ++(uip_connr->timer);
+      // connect -> ACK -> connected -> send data -> close() | FIN -> 
+      // if the server does not reply within *_TIMEOUT the uip_closed / _timeout / _abort callback will never be called. no chanze for the TCP client to cleanup
       if(uip_connr->tcpstateflags == UIP_TIME_WAIT && uip_connr->timer == UIP_TIME_WAIT_TIMEOUT) {
         UIP_LOG("ip: timeout connection (UIP_TIME_WAIT)");
         uip_connr->tcpstateflags = UIP_CLOSED;
+        uip_flags = UIP_CLOSE | UIP_TIMEDOUT;
+        UIP_APPCALL();
       } else if(uip_connr->tcpstateflags == UIP_FIN_WAIT_2 && uip_connr->timer == UIP_FIN_WAIT_2_TIMEOUT) {
         UIP_LOG("ip: timeout connection (UIP_FIN_WAIT_2)");
         uip_connr->tcpstateflags = UIP_CLOSED;
+        uip_flags = UIP_CLOSE | UIP_TIMEDOUT;
+        UIP_APPCALL();
       }
     } else if(uip_connr->tcpstateflags != UIP_CLOSED) {
       /* Decrease the connection inactive timer */
@@ -881,7 +888,8 @@ uip_process(u8_t flag)
 		      header (40 bytes). */
 #endif /* UIP_CONF_IPV6 */
   } else {
-    UIP_LOG("ip: packet shorter than reported in IP header.");
+    // DEBUG_PRINTF("ip: packet shorter than reported in IP header, dropped (%d)", (u16_t)(BUF->len[0] << 8) + BUF->len[1]);
+    DEBUG_PRINT_BUFFER("ip: packet shorter than reported in IP header, dropped:");
     goto drop;
   }
 
@@ -1134,6 +1142,7 @@ ip_check_end:
   for(uip_udp_conn = &uip_udp_conns[UIP_UDP_CONNS - 1];
       uip_udp_conn >= &uip_udp_conns[0];
       --uip_udp_conn) {
+      DEBUG_PRINTF("UDP: check connection? @%p %d -> %d\n", uip_udp_conn, HTONS(uip_udp_conn->rport), HTONS(uip_udp_conn->lport));
     /* If the local UDP port is non-zero, the connection is considered
        to be used. If so, the local port number is checked against the
        destination port number in the received packet. If the two port
@@ -2039,8 +2048,9 @@ void debug_print_buffer(const char* prefix) {
       seqnop[0]=BUF->seqno[3]; seqnop[1]=BUF->seqno[2]; seqnop[2]=BUF->seqno[1]; seqnop[3]=BUF->seqno[0];
       print_ipaddr(&BUF->srcipaddr, sip, sizeof(sip));
       print_ipaddr(&BUF->destipaddr, dip, sizeof(dip));
-      DEBUG_PRINTF("%S %s:%hu -> %s:%hu length: %d, flags:%x (%S%S%S%S%S%S%S) seq:%lx, ack:%lx\n",
+      DEBUG_PRINTF("%S [%S] %s:%hu -> %s:%hu length: %d, flags:%x (%S%S%S%S%S%S%S) seq:%lx, ack:%lx\n",
         prefix,
+		(BUF->proto == UIP_PROTO_UDP) ? PSTR("UDP") : PSTR(""),
         sip, ntohs(UDPBUF->srcport), dip, ntohs(UDPBUF->destport), uip_len, BUF->flags,
         BUF->flags & TCP_FIN ? PSTR("FIN ") : PSTR(""),
         BUF->flags & TCP_SYN ? PSTR("SYN ") : PSTR(""),
