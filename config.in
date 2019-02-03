@@ -200,8 +200,9 @@ mainmenu_option next_comment
 		if [ "$atmega32" = "y" ] ; then
 			if [ "$TEENSY_SUPPORT" = "y" ] ; then
 				if [ "$NET_MAX_FRAME_LENGTH" -gt 192 ] ; then NET_MAX_FRAME_LENGTH=192 ; fi
-			else
-				if [ "$NET_MAX_FRAME_LENGTH" -gt 500 ] ; then NET_MAX_FRAME_LENGTH=500 ; fi
+# wegen DHCP == 590bytes
+#			else
+#				if [ "$NET_MAX_FRAME_LENGTH" -gt 500 ] ; then NET_MAX_FRAME_LENGTH=500 ; fi
 			fi
 		fi
 		if [ "$atmega162" = "y" -a "$NET_MAX_FRAME_LENGTH" -gt 600 ] ; then NET_MAX_FRAME_LENGTH=600 ; fi
