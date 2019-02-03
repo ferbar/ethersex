@@ -191,6 +191,10 @@ void process_packet(void)
     /* decrement rpv received_packet_size by 4, because the 4 byte CRC checksum is counted */
     rpv.received_packet_size -= 4;
 
+#   ifdef DEBUG_NET
+    debug_printf("net: rx packet size: %d\n", rpv.received_packet_size);
+#   endif
+
     /* check size */
     if (rpv.received_packet_size > NET_MAX_FRAME_LENGTH
             || rpv.received_packet_size < 14
@@ -212,6 +216,7 @@ void process_packet(void)
 
     /* Set the enc stack active */
     uip_stack_set_active(STACK_ENC);
+
 
     /* process packet */
     struct uip_eth_hdr *packet = (struct uip_eth_hdr *)&uip_buf;
@@ -268,8 +273,8 @@ void process_packet(void)
 #ifdef DEBUG_UNKNOWN_PACKETS
       default:
       	/* debug output */
-        debug_printf("net: unknown packet, %02x%02x%02x%02x%02x%02x "
-                     "-> %02x%02x%02x%02x%02x%02x, type 0x%04x\n",
+        debug_printf("net: unknown packet, %02x:%02x:%02x:%02x:%02x:%02x "
+                     "-> %02x:%02x:%02x:%02x:%02x:%02x, type/len 0x%04x\n",
                      packet->src.addr[0], packet->src.addr[1],
                      packet->src.addr[2], packet->src.addr[3],
                      packet->src.addr[4], packet->src.addr[5],
