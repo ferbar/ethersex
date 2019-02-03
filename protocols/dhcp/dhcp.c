@@ -346,6 +346,7 @@ void dhcp_net_init(void) {
   
   if(! dhcp_conn)
     return; /* dammit. */
+  DHCP_DEBUG("dhcp: init connection @%p\n", dhcp_conn);
   
   uip_udp_bind(dhcp_conn, HTONS(DHCPC_CLIENT_PORT));
   
@@ -358,8 +359,10 @@ void dhcp_net_init(void) {
 
 void dhcp_net_main(void) {
 
+  DHCP_DEBUG("dhcp: main 1 [%#x]\n", uip_flags);
 
   if(uip_newdata()) {
+    DHCP_DEBUG("dhcp: main 2 [%d]\n", uip_udp_conn->appstate.dhcp.state);
 
     switch (uip_udp_conn->appstate.dhcp.state) {
       
