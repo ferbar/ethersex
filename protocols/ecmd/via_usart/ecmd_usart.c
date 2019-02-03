@@ -45,13 +45,14 @@
         (ECMD_SERIAL_USART_USE_USART != DEBUG_USE_USART)) )
 #define ECMD_USART_NEED_INIT
 generate_usart_init()
-#endif
 
 static char recv_buffer[ECMD_SERIAL_USART_BUFFER_LEN];
 static char write_buffer[ECMD_SERIAL_USART_BUFFER_LEN + 2];
 static uint8_t recv_len, sent;
 static int16_t write_len;
 static volatile uint8_t must_parse;
+#endif
+
 
 void
 ecmd_serial_usart_init(void) {
@@ -62,9 +63,11 @@ ecmd_serial_usart_init(void) {
 #endif
 }
 
+
 void
 ecmd_serial_usart_periodic(void)
 {
+#ifdef ECMD_USART_NEED_INIT
   if (must_parse && write_len == 0) {
     /* we have a request */
     must_parse = 0;
@@ -97,8 +100,10 @@ ecmd_serial_usart_periodic(void)
     usart(UCSR,B) |= _BV(usart(TXCIE));
 
   }
+  #endif
 }
 
+#ifdef ECMD_USART_NEED_INIT
 ISR(usart(USART,_RX_vect))
 {
   /* Ignore errors */
@@ -142,6 +147,8 @@ ISR(usart(USART,_TX_vect))
     RS485_DISABLE_TX;
   }
 }
+
+#endif // defined ECMD_USART_NEED_INIT
 
 /*
   -- Ethersex META --
