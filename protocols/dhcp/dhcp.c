@@ -346,7 +346,7 @@ void dhcp_net_init(void) {
   
   if(! dhcp_conn)
     return; /* dammit. */
-  DHCP_DEBUG("dhcp: init connection @%p\n", dhcp_conn);
+  DHCP_DEBUG("init connection @%p\n", dhcp_conn);
   
   uip_udp_bind(dhcp_conn, HTONS(DHCPC_CLIENT_PORT));
   
@@ -359,10 +359,10 @@ void dhcp_net_init(void) {
 
 void dhcp_net_main(void) {
 
-  DHCP_DEBUG("dhcp: main 1 [%#x]\n", uip_flags);
+  DHCP_DEBUG("main 1 [%#x]\n", uip_flags);
 
   if(uip_newdata()) {
-    DHCP_DEBUG("dhcp: main 2 [%d]\n", uip_udp_conn->appstate.dhcp.state);
+    DHCP_DEBUG("main 2 [%d]\n", uip_udp_conn->appstate.dhcp.state);
 
     switch (uip_udp_conn->appstate.dhcp.state) {
       
@@ -384,7 +384,7 @@ void dhcp_net_main(void) {
       if (parse_msg() == DHCPACK) {
 	uip_udp_conn->appstate.dhcp.state = STATE_CONFIGURED;
 
-	DHCP_DEBUG("dhcp: DHCPACK ip:%d.%d.%d.%d netmask:%d.%d.%d.%d gateway:%d.%d.%d.%d\n",
+	DHCP_DEBUG("DHCPACK ip:%d.%d.%d.%d netmask:%d.%d.%d.%d gateway:%d.%d.%d.%d\n",
 		uip_ipaddr1(uip_udp_conn->appstate.dhcp.ipaddr),
 		uip_ipaddr2(uip_udp_conn->appstate.dhcp.ipaddr),
 		uip_ipaddr3(uip_udp_conn->appstate.dhcp.ipaddr),
@@ -399,6 +399,7 @@ void dhcp_net_main(void) {
 		uip_ipaddr2(uip_udp_conn->appstate.dhcp.default_router),
 		uip_ipaddr3(uip_udp_conn->appstate.dhcp.default_router),
 		uip_ipaddr4(uip_udp_conn->appstate.dhcp.default_router)
+		// uip_udp_conn->appstate.dhcp.serverid
 		);
 
 	uip_sethostaddr(uip_udp_conn->appstate.dhcp.ipaddr);
