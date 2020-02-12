@@ -1,0 +1,63 @@
+
+home-assistant-mqtt works with an avr-netoi with the default atmega32.
+
+* auto discovery
+* read up to 4 adcs analog / digital pins
+* assign the adc pins as output with an pullup R
+* use a PIR
+* use a smoke detector
+
+enabled in the .config-home-assistant-mqtt:
+
+tcp - fritz!box sends dhcp requests with 590 bytes, so tcp buffer is 600bytes
+mqtt+dns
+dhcp - fritz!box doesn't support bootp - this would save 200bytes ram
+dns
+ecmd + UDP (TCP needs a lot of ram)
+home-assistant-mqtt
+
+
+
+
+Some patches to save some bytes ram
+
+
+diff --git a/core/debug.c b/core/debug.c
+index 32fd7567..ee0ae948 100644
+--- a/core/debug.c
++++ b/core/debug.c
+@@ -122,7 +122,9 @@ debug_process_uart(void)
+   defined(DEBUG_SERIAL_USART_SUPPORT) && \
+   (DEBUG_USE_USART == ECMD_SERIAL_USART_USE_USART)
+ 
+-#define LEN 60
++// duplicate of protocols/ecmd/via_usart/ecmd_usart.c ???
++#warning [chris] war 60 - input buffer?
++#define LEN 30
+ #define OUTPUTLEN 40
+ 
+   static char buf[LEN + 1];
+@@ -162,6 +164,7 @@ debug_process_uart(void)
+     }
+     else
+     {
++      // debug_printf("reading character [%c] (ptr %p, buf %p)\n", data, ptr, buf);
+       debug_uart_put(data, stdout);
+       if (data == '\b')
+       {
+diff --git a/protocols/dns/resolv.c b/protocols/dns/resolv.c
+index 0da54efd..41f16ed5 100644
+--- a/protocols/dns/resolv.c
++++ b/protocols/dns/resolv.c
+@@ -128,8 +128,10 @@ struct namemap {
+   resolv_found_callback_t callback;
+ };
+ 
++#warning [chris] war 4
++
+ #ifndef UIP_CONF_RESOLV_ENTRIES
+-#define RESOLV_ENTRIES 4
++#define RESOLV_ENTRIES 2
+ #else /* UIP_CONF_RESOLV_ENTRIES */
+ #define RESOLV_ENTRIES UIP_CONF_RESOLV_ENTRIES
+ #endif /* UIP_CONF_RESOLV_ENTRIES */
