@@ -152,6 +152,13 @@ struct eeprom_config_t
   uint8_t alarm_push_adcs;
 #endif
 
+#ifdef HOME_ASSISTANT_MQTT_SUPPORT
+  uint8_t home_assistant_mqtt_adc_pin_mask;
+  uint8_t home_assistant_mqtt_read_pin_mask;
+  uint8_t home_assistant_mqtt_pullup_pin_mask;
+  uint8_t home_assistant_mqtt_pullup_changeable_pin_mask;
+#endif
+
   uint8_t crc;
 };
 

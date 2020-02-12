@@ -187,6 +187,16 @@ eeprom_init (void)
   uint8_t adcs=ALARM_PUSH_ADCS;
   eeprom_save (alarm_push_adcs, &adcs, sizeof(uint8_t));
 #endif
+#ifdef HOME_ASSISTANT_MQTT_SUPPORT
+  uint8_t HAm_adc_pin_mask=HOME_ASSISTANT_MQTT_ADC_PIN_MASK;
+  eeprom_save (home_assistant_mqtt_adc_pin_mask, &HAm_adc_pin_mask, sizeof(uint8_t));
+  uint8_t HAm_read_pin_mask=HOME_ASSISTANT_MQTT_READ_PIN_MASK;
+  eeprom_save (home_assistant_mqtt_read_pin_mask, &HAm_read_pin_mask, sizeof(uint8_t));
+  uint8_t HAm_pullup_pin_mask=HOME_ASSISTANT_MQTT_PULLUP_PIN_MASK;
+  eeprom_save (home_assistant_mqtt_pullup_pin_mask, &HAm_pullup_pin_mask, sizeof(uint8_t));
+  uint8_t HAm_pullup_changeable_pin_mask=HOME_ASSISTANT_MQTT_PULLUP_CHANGEABLE_PIN_MASK;
+  eeprom_save (home_assistant_mqtt_pullup_changeable_pin_mask, &HAm_pullup_changeable_pin_mask, sizeof(uint8_t));
+#endif
 
   eeprom_update_chksum ();
 }
