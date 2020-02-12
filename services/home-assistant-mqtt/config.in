@@ -1,0 +1,11 @@
+dep_bool_menu "Home Assistant MQTT Service" HOME_ASSISTANT_MQTT_SUPPORT $MQTT_SUPPORT $DNS_SUPPORT
+    int "pins offset avr netio ADC1 = gpio4"              HOME_ASSISTANT_MQTT_PIN_OFFSET 4
+	int "max pins"                                        HOME_ASSISTANT_MQTT_MAX_PINS 4
+    int "ADC bitmask to report"                           HOME_ASSISTANT_MQTT_ADC_PIN_MASK 1
+    int "digital IO bitmask to read"                      HOME_ASSISTANT_MQTT_READ_PIN_MASK 0
+    int "pullup enable/disable on startup pins"           HOME_ASSISTANT_MQTT_PULLUP_PIN_MASK 0
+    int "pullup enable/disable changeable pins"           HOME_ASSISTANT_MQTT_PULLUP_CHANGEABLE_PIN_MASK 0
+	string "mqtt host"                                    HOME_ASSISTATNT_MQTT_SERVER_HOSTNAME "home-assistant"
+	comment  "Debugging Flags"
+	dep_bool 'Home Assistant MQTT Debug' DEBUG_HOME_ASSISTANT_MQTT $DEBUG $HOME_ASSISTANT_MQTT_SUPPORT
+endmenu
