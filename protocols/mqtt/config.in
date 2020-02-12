@@ -4,10 +4,18 @@ dep_bool_menu "MQTT client" MQTT_SUPPORT $TCP_SUPPORT
 	comment  "Configuration"
 	dep_bool 'Enable MQTT static configuration' MQTT_STATIC_CONF $MQTT_SUPPORT
 
+        int 'MQTT keep alive / ping' MQTT_KEEPALIVE 60
+
 if [ "$MQTT_STATIC_CONF" = y ]; then
-	string 'MQTT client ID' MQTT_STATIC_CONF_CLIENTID
-	ip "MQTT broker IP" MQTT_STATIC_CONF_SERVER_IP "192.168.23.254" "2001:19f0:feee:0:0:dead:beef:cafe"
-	dep_bool 'Supply MQTT username' MQTT_STATIC_CONF_SUPPLY_USERNAME $MQTT_SUPPORT
+  string 'MQTT client ID' MQTT_STATIC_CONF_CLIENTID "avr-netio"
+
+  if [ "$DNS_SUPPORT" = y ] ; then
+    string "MQTT broker hostname" MQTT_STATIC_CONF_SERVER_HOSTNAME "home-assistant"
+  else
+    ip "MQTT broker IP" MQTT_STATIC_CONF_SERVER_IP "192.168.23.254" "2001:19f0:feee:0:0:dead:beef:cafe"
+  fi
+
+  dep_bool 'Supply MQTT username' MQTT_STATIC_CONF_SUPPLY_USERNAME $MQTT_SUPPORT
   if [ "$MQTT_STATIC_CONF_SUPPLY_USERNAME" = y ]; then
 	dep_bool 'Supply MQTT password' MQTT_STATIC_CONF_SUPPLY_PASSWORD $MQTT_SUPPORT $MQTT_STATIC_CONF_SUPPLY_USERNAME
 	string 'MQTT username' MQTT_STATIC_CONF_USER

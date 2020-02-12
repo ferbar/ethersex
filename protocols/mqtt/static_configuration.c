@@ -28,6 +28,14 @@
 #include "config.h"
 #include "mqtt.h"
 
+#include "core/debug.h"
+
+#ifdef MQTT_DEBUG
+#define MQTTDEBUG(f,...) debug_printf("mqtt: " f "\n", ## __VA_ARGS__)
+#else
+#define MQTTDEBUG(...)
+#endif
+
 
 #ifdef MQTT_STATIC_CONF
 
@@ -64,14 +72,21 @@ static mqtt_connection_config_t mqtt_static_conf =
   .will_retain = MQTT_STATIC_CONF_WILL_RETAIN_FLAG,
   .will_message = MQTT_STATIC_CONF_WILL_MESSAGE,
   .auto_subscribe_topics = mqtt_static_conf_autosubscribe,
-  //target_ip not set, see mqtt_set_static_conf
+  //target_ip, target_hostname not set, see mqtt_set_static_conf
+  .target_hostname_isP = true
 };
 
 void
 mqtt_set_static_conf(void)
 {
+#ifdef DNS_SUPPORT
+  mqtt_static_conf.target_hostname = PSTR(MQTT_STATIC_CONF_SERVER_HOSTNAME);
+#else
   set_MQTT_STATIC_CONF_SERVER_IP(&mqtt_static_conf.target_ip);
+#endif
+  
   mqtt_set_connection_config(&mqtt_static_conf);
+  MQTTDEBUG("client id: %s", mqtt_con_config->client_id);
 }
 
 #endif

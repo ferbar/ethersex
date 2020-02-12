@@ -3604,3 +3604,8 @@ DEBUG_LISTFILE
 
 GCC_VERBOSE
   Enable many gcc warnings
+
+MQTT broker hostname
+MQTT_STATIC_CONF_SERVER_HOSTNAME
+
+  with DNS_SUPPORT enabled you can enter a hostname

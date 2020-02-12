@@ -36,6 +36,7 @@
  *  - create a mqtt_callback_config_t structure in PROGMEM and supply your
  *    callback functions
  *  - call mqtt_register_callback(.)
+ *  - construct_connect_packet_callback => write a wrapper for construct connect packet (last will message / topic)
  *  - the connack_callback will be fired (if supplied)
  *  - you may subscribe to topics using mqtt_construct_subscribe_packet(.)
  *  - the poll_callback will be fired each uip_poll cycle (if supplied)
@@ -101,10 +102,14 @@
 #include "mqtt_state.h"
 #include "core/debug.h"
 
+#ifdef DNS_SUPPORT
+#include "protocols/dns/resolv.h"
+#endif
+
 // DEBUG MACROS
 
 #ifdef MQTT_DEBUG
-#define MQTTDEBUG(...) debug_printf(__VA_ARGS__)
+#define MQTTDEBUG(f,...) debug_printf("mqtt: " f "\n", ## __VA_ARGS__)
 #else
 #define MQTTDEBUG(...)
 #endif
@@ -138,7 +143,7 @@ static bool mqtt_ping_outstanding;
 
 // GENERAL STATE STRUCTURES
 
-static mqtt_connection_config_t const *mqtt_con_config = NULL;
+mqtt_connection_config_t const *mqtt_con_config = NULL;
 static mqtt_callback_config_t const *mqtt_callbacks[MQTT_CALLBACK_SLOTS];
 static mqtt_connection_state_t mqtt_con_state;
 static uip_conn_t *mqtt_uip_conn;
@@ -168,7 +173,7 @@ static uint8_t mqtt_buffer_write_length_field(uint8_t * buffer,
                                               uint16_t length);
 static bool mqtt_write_to_receive_buffer(const void *data, uint16_t length);
 
-static bool mqtt_construct_connect_packet(void);
+bool mqtt_construct_connect_packet(void);
 bool mqtt_construct_publish_packet(char const *topic, const void *payload,
                                    uint16_t payload_length, bool retain);
 bool mqtt_construct_subscribe_packet(char const *topic);
@@ -192,7 +197,7 @@ static void mqtt_fire_publish_callback(char const *topic,
 
 static void mqtt_poll(void);
 static void mqtt_main(void);
-static void mqtt_init(void);
+static void mqtt_init(uip_ipaddr_t * target_ip);
 void mqtt_periodic(void);
 
 bool mqtt_is_connected(void);
@@ -209,6 +214,7 @@ mqtt_abort_connection(void)
 {
   uip_abort();
   mqtt_uip_conn = NULL;
+  STATE->stage = MQTT_STATE_DISCONNECTED;
   mqtt_fire_close_callback();
 }
 
@@ -378,7 +384,7 @@ mqtt_write_to_receive_buffer(const void *data, uint16_t length)
  *                   *
  *********************/
 
-static bool
+bool
 mqtt_construct_connect_packet(void)
 {
   uint8_t protocol_string[9] =
@@ -640,7 +646,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
     // only accept connack packets
     if ((header & 0xf0) != MQTTCONNACK)
     {
-      MQTTDEBUG("expected connack packet, aborting\n");
+      MQTTDEBUG("expected connack packet, aborting");
       mqtt_abort_connection();
       return;
     }
@@ -648,7 +654,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
     // assert packet length
     if (packet_length < 2)
     {
-      MQTTDEBUG("packet length assert connack, aborting\n");
+      MQTTDEBUG("packet length assert connack, aborting");
       mqtt_abort_connection();
       return;
     }
@@ -656,12 +662,12 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
     // check return code
     if (packet[1] != 0)
     {
-      MQTTDEBUG("connection request error code, aborting\n");
+      MQTTDEBUG("connection request error code, aborting");
       mqtt_abort_connection();
       return;
     }
 
-    MQTTDEBUG("connack received\n");
+    MQTTDEBUG("connack received");
     STATE->stage = MQTT_STATE_CONNECTED;
 
     // auto subscribe
@@ -691,7 +697,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
         // assert packet length
         if (packet_length < 2 + (qos ? 2 : 0))
         {
-          MQTTDEBUG("packet length assert pub1, aborting\n");
+          MQTTDEBUG("packet length assert pub1, aborting");
           mqtt_abort_connection();
           return;
         }
@@ -701,7 +707,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
         // assert packet length again
         if (packet_length < 2 + (qos ? 2 : 0) + topic_length)
         {
-          MQTTDEBUG("packet length assert pub2, aborting\n");
+          MQTTDEBUG("packet length assert pub2, aborting");
           mqtt_abort_connection();
           return;
         }
@@ -732,7 +738,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
             mqtt_construct_ack_packet(MQTTPUBREC, msgid);
         }
 
-        MQTTDEBUG("publish received\n");
+        MQTTDEBUG("publish received");
 
         break;
 
@@ -746,7 +752,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
         // assert packet length
         if (packet_length < 2)
         {
-          MQTTDEBUG("packet length assert rec, aborting\n");
+          MQTTDEBUG("packet length assert rec, aborting");
           mqtt_abort_connection();
           return;
         }
@@ -765,7 +771,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
         // assert packet length
         if (packet_length < 2)
         {
-          MQTTDEBUG("packet length assert rel, aborting\n");
+          MQTTDEBUG("packet length assert rel, aborting");
           mqtt_abort_connection();
           return;
         }
@@ -789,13 +795,13 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
 
 
       case MQTTPINGREQ:
-        MQTTDEBUG("pingreq received\n");
+        MQTTDEBUG("pingreq received");
         mqtt_construct_zerolength_packet(MQTTPINGRESP);
         break;
 
 
       case MQTTPINGRESP:
-        MQTTDEBUG("pingresp received\n");
+        MQTTDEBUG("pingresp received");
         mqtt_ping_outstanding = false;
         break;
 
@@ -816,7 +822,7 @@ mqtt_handle_packet(const void *data, uint8_t llen, uint16_t packet_length)
 
   else
   {
-    MQTTDEBUG("unkown state\n");        // uhmm
+    MQTTDEBUG("unkown state");        // uhmm
   }
 }
 
@@ -1107,13 +1113,13 @@ mqtt_poll(void)
   {
     if (mqtt_ping_outstanding)
     {
-      MQTTDEBUG("missed ping, aborting\n");
+      MQTTDEBUG("missed ping, aborting");
       mqtt_abort_connection();
       return;
     }
     else
     {
-      MQTTDEBUG("ping request\n");
+      MQTTDEBUG("ping request");
       mqtt_construct_zerolength_packet(MQTTPINGREQ);
 
       // reset counter, wait another keepalive period
@@ -1132,8 +1138,9 @@ mqtt_main(void)
 
   if (uip_aborted() || uip_timedout())
   {
-    MQTTDEBUG("connection aborted\n");
+    MQTTDEBUG("connection aborted");
     mqtt_uip_conn = NULL;
+    STATE->stage = MQTT_STATE_DISCONNECTED;
 
     mqtt_fire_close_callback();
 
@@ -1142,16 +1149,26 @@ mqtt_main(void)
 
   if (uip_closed())
   {
-    MQTTDEBUG("connection closed\n");
+    MQTTDEBUG("connection closed");
     mqtt_uip_conn = NULL;
+    STATE->stage = MQTT_STATE_DISCONNECTED;
     return;
   }
 
   if (uip_connected())
   {
-    MQTTDEBUG("new connection\n");
+    MQTTDEBUG("new connection");
 
-    mqtt_construct_connect_packet();
+#if MQTT_CALLBACK_SLOTS != 1
+#error fixme
+#endif
+    construct_connect_packet_callback cb =
+        (construct_connect_packet_callback) pgm_read_word(&mqtt_callbacks[0]->construct_connect_packet_callback);
+    MQTTDEBUG("construct callback: %p", cb);
+    if (cb != NULL)
+      cb();
+    else
+      mqtt_construct_connect_packet();
 
     // init
     mqtt_next_msg_id = 1;
@@ -1163,25 +1180,25 @@ mqtt_main(void)
 
   if (uip_acked())
   {
-    MQTTDEBUG("acked\n");
+    MQTTDEBUG("main acked");
     mqtt_received_ack();
   }
 
   if (uip_rexmit())
   {
-    MQTTDEBUG("mqtt main rexmit\n");
+    MQTTDEBUG("main rexmit");
     mqtt_retransmit();
   }
 
   else if (uip_newdata() && uip_len)
   {
-    MQTTDEBUG("received data: \n");
+    MQTTDEBUG("main received data: ");
     mqtt_parse();
   }
 
   else if (uip_poll() && STATE->stage == MQTT_STATE_CONNECTED)
   {
-    MQTTDEBUG("mqtt main poll\n");
+    //MQTTDEBUG("main poll");
     mqtt_poll();
     mqtt_flush_buffer();
   }
@@ -1191,11 +1208,24 @@ mqtt_main(void)
     if (mqtt_timer_counter - mqtt_last_in_activity
         > MQTT_KEEPALIVE * TIMER_TICKS_PER_SECOND)
     {
-      MQTTDEBUG("connect request timed out\n");
+      MQTTDEBUG("connect request timed out");
       mqtt_abort_connection();
       return;
     }
   }
+}
+
+static void
+mqtt_dns_query_cb(char *name, uip_ipaddr_t * ipaddr)
+{
+  MQTTDEBUG("dns_query_cb");
+  if(ipaddr == NULL) {
+    MQTTDEBUG("dns query failed");
+    STATE->stage=MQTT_STATE_DISCONNECTED;
+  } else {
+    mqtt_init(ipaddr);
+  }
+  MQTTDEBUG("dns_query_cb done");
 }
 
 
@@ -1205,34 +1235,75 @@ mqtt_periodic(void)
 {
   mqtt_timer_counter++;
 
+#ifdef DNS_SUPPORT
+// wait for dns server FIXME: this is set from static config even if dhcp is enabled
+  if(resolv_getserver() != NULL) {
+    // MQTTDEBUG("have dns server con=%p state=%d", mqtt_uip_conn, STATE->stage);
+    if (!mqtt_uip_conn && STATE->stage==MQTT_STATE_DISCONNECTED) {
+      STATE->stage=MQTT_STATE_DNS_QUERY;
+
+
+      uip_ipaddr_t *ipaddr;
+
+// ==== dns resolve ====
+      char *hostname=(char*)mqtt_con_config->target_hostname;
+      if(mqtt_con_config->target_hostname_isP) {
+        hostname=(char *) malloc(strlen_P(mqtt_con_config->target_hostname) +1);
+        strcpy_P(hostname, mqtt_con_config->target_hostname);
+      }
+// cached ip?
+      if (!(ipaddr = resolv_lookup(hostname))) {
+        // have to query DNS
+        MQTTDEBUG("do resolv_query");
+        resolv_query(hostname, mqtt_dns_query_cb);
+        MQTTDEBUG("do resolv_query done");
+      } else  {
+        // IP stored in cache
+        MQTTDEBUG("connecting to cached dns entry");
+        mqtt_init(ipaddr);
+      }
+      if(mqtt_con_config->target_hostname_isP) {
+        free(hostname);
+      }
+    }
+  } else {
+    MQTTDEBUG("waiting for dns server...");
+  }
+#else
   if (!mqtt_uip_conn)
-    mqtt_init();
+    mqtt_init(mqtt_con_config->target_ip);
+#endif  
 }
 
 
 // initialize mqtt connection if config data has been supplied
 static void
-mqtt_init(void)
+mqtt_init(uip_ipaddr_t * target_ip)
 {
+#if UIP_CONF_IPV6
+  MQTTDEBUG("init");
+#else
+  MQTTDEBUG("init %u.%u.%u.%u", uip_ipaddr1(*target_ip), uip_ipaddr2(*target_ip), uip_ipaddr3(*target_ip), uip_ipaddr4(*target_ip));
+#endif
   if (!mqtt_uip_conn)
   {
     if (!mqtt_con_config)
     {
-      MQTTDEBUG("cannot initialize mqtt client, no config\n");
+      MQTTDEBUG("cannot initialize mqtt client, no config");
       return;
     }
 
-    MQTTDEBUG("initializing mqtt client\n");
+    MQTTDEBUG("initializing mqtt client");
 
     mqtt_reset_state();         // reset state
     // uip_connect wants a non-constant pointer
     mqtt_uip_conn =
-      uip_connect((uip_ipaddr_t *) & mqtt_con_config->target_ip, HTONS(1883),
+      uip_connect(target_ip, HTONS(1883),
                   mqtt_main);
 
     if (!mqtt_uip_conn)
     {
-      MQTTDEBUG("no uip_conn available.\n");
+      MQTTDEBUG("no uip_conn available.");
       return;
     }
   }

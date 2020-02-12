@@ -27,6 +27,7 @@ enum {
     MQTT_STATE_CONNECT,
     MQTT_STATE_CONNECTED,
     MQTT_STATE_SUBSCRIBED,
+	MQTT_STATE_DNS_QUERY
 };
 
 typedef struct mqtt_connection_state_t {

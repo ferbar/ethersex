@@ -78,6 +78,7 @@
 
 
 // CONFIG STRUCTURE
+typedef void (*construct_connect_packet_callback) (void);
 typedef void (*connack_callback) (void);
 typedef void (*poll_callback) (void);
 typedef void (*close_callback) (void);
@@ -87,6 +88,7 @@ typedef void (*publish_callback) (char const *topic, uint16_t topic_length,
 typedef struct
 {
   // see mqtt.c for explanation
+  construct_connect_packet_callback construct_connect_packet_callback;
   connack_callback connack_callback;
   poll_callback poll_callback;
   close_callback close_callback;
@@ -102,14 +104,18 @@ typedef struct
   uint8_t will_qos;
   bool will_retain;
   char const *will_message;
+#ifdef DNS_SUPPORT
+  char const *target_hostname;
+  bool target_hostname_isP;
+#else
   uip_ipaddr_t target_ip;
+#endif
 
   // Pointer to an array of (char const*) of topic strings to be automatically
   // subscribed to after a connection is established. The array is assumed to
   // be NULL-terminated.
   char const *const *auto_subscribe_topics;
 } mqtt_connection_config_t;
-
 
 // PUBLIC FUNCTIONS
 
@@ -126,6 +132,8 @@ bool mqtt_construct_subscribe_packet(char const *topic);
 bool mqtt_construct_unsubscribe_packet(char const *topic);
 bool mqtt_construct_zerolength_packet(uint8_t msg_type);
 bool mqtt_construct_ack_packet(uint8_t msg_type, uint16_t msgid);
+
+bool mqtt_construct_connect_packet(void);
 
 
 // INTERNAL
