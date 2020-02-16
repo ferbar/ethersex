@@ -1,3 +1,22 @@
+ferbar/ethersex
+===============
+original repo see: https://github.com/ethersex/ethersex
+
+This repo contains the following patches / addons
+* Fixed TCP reset handling: Aborted TCP connections are handled properly
+* reduced size of some global variables
+* Added home-assistant-mqtt: read the IO pins either as analog or digital pin (as a HA sensor), configure a pin as switch.
+  The pin-settings are configurable with ecmd commands. HA Auto-discovery is implemented, too.
+  
+The included .config-home-assistant-mqtt is ready to use for a avr-netio with an Atmega32
+* ecmd: serial, udp (tcp would take too much ram)
+* dhcp with a packet length of 600bytes (to allow dhcp with Fritz!Box-es which send 590byte dhcp ack packets)
+* debug enabled (reduced buffer length)
+* dns enabled (cache size reduced to 2)
+* mqtt
+* home-assistant-mqtt (mqtt server = "home-assistant")
+
+
 About Ethersex
 ==============
 Ethersex, originally developed to provide an alternative firmware for the [etherrape hardware](http://www.lochraster.org/etherrape),
