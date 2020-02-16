@@ -6,7 +6,7 @@ This repo contains the following patches / addons
 * Fixed TCP reset handling: Aborted TCP connections are handled properly
 * reduced size of some global variables
 * Added home-assistant-mqtt: read the IO pins either as analog or digital pin (as a HA sensor), configure a pin as switch.
-  The pin-settings are configurable with ecmd commands. HA Auto-discovery is implemented, too.
+  The pin-settings are configurable with ecmd commands. HA Auto-discovery is implemented, too. (https://www.home-assistant.io/docs/mqtt/discovery/)
   
 The included .config-home-assistant-mqtt is ready to use for a avr-netio with an Atmega32
 * ecmd: serial, udp (tcp would take too much ram)
